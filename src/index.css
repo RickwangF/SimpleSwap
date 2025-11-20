@@ -1,0 +1,84 @@
+/* Minimal modern reset for a light-theme DeFi dApp (Uniswap‑style) */
+
+/* 1. Use a more intuitive box model */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+/* 2. Remove default margins */
+body, h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd {
+    margin: 0;
+}
+
+/* 3. Improve text rendering */
+html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+}
+
+/* 4. Base body */
+body {
+    min-height: 100vh;
+    line-height: 1.5;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #111;
+    background-color: #f9fafb; /* light theme */
+    box-sizing: border-box;
+}
+
+/* 5. Images and media */
+img, picture, video, canvas, svg {
+    display: block;
+    max-width: 100%;
+}
+
+/* 6. Remove built‑in form styles */
+input, button, textarea, select {
+    font: inherit;
+    color: inherit;
+    border: none;
+    outline: none;
+    background: transparent;
+}
+
+button {
+    cursor: pointer;
+}
+
+/* 7. Remove default list styles */
+ul, ol {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+/* 8. Anchor reset */
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* 9. Table reset */
+table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+/* 10. Smooth scrolling */
+html:focus-within {
+    scroll-behavior: smooth;
+}
+
+/* 11. Light theme scrollbar (optional) */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.15);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.05);
+}
