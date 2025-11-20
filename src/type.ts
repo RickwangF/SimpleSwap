@@ -19,3 +19,9 @@ export type PoolManagerData = {
     currentPrice: number,
     liquidity: number
 }
+
+export type TokenInfo = {
+    symbol: string;
+    name: string;
+    decimals: number;
+};

@@ -5,7 +5,7 @@ import { RainbowKitProvider, getDefaultConfig } from '@rainbow-me/rainbowkit';
 import { sepolia } from 'wagmi/chains';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const config = getDefaultConfig({
+export const config = getDefaultConfig({
     appName: 'SimpleSwap',
     projectId: 'f43119e6c7b5d2d32da03bdc473ef23b',
     chains: [sepolia],
