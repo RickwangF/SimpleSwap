@@ -61,8 +61,7 @@ export function PositionManager() {
       const pool = await getPool(pos.token0, pos.token1, pos.index);
       if (!pool) continue;
 
-      const sqrtPriceX96: bigint = await pool.sqrtPriceX96;
-      const price = getPriceFromSqrtPriceX96(sqrtPriceX96);
+      const sqrtPriceX96: bigint = pool.sqrtPriceX96;
 
       const token0Symbol = await getTokenSymbolCached(pos.token0);
       const token1Symbol = await getTokenSymbolCached(pos.token1);
@@ -72,7 +71,7 @@ export function PositionManager() {
         token: `${token0Symbol}/${token1Symbol}`,
         feeTier: `${pos.fee / 10000}%`,
         priceRange: `${pos.tickLower} ~ ${pos.tickUpper}`,
-        currentPrice: price,
+        currentPrice: Number(sqrtPriceX96),
       });
     }
 
