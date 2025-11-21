@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { Button, Table } from "antd";
-import { useReadContract } from "wagmi";
-import abi from "../ContractABI.json";
-import type { PoolInfo, PoolManagerData } from "../type.ts";
+import type { PoolManagerData } from "../type.ts";
 import { convertPoolInfoToManagerData, getTokenSymbol } from "../utils.ts";
-
-const POOL_MANAGER = "0xddC12b3F9F7C91C79DA7433D8d212FB78d609f7B";
+import { usePoolManager } from "../PoolManagerContext.tsx";
 
 export function PoolManager() {
+  const { pools, isLoading } = usePoolManager();
   const [poolDataSource, setPoolDataSource] = useState<PoolManagerData[]>([]);
+
+  const tokenCache = new Map<string, string>();
 
   const columns = [
     {
@@ -38,23 +38,12 @@ export function PoolManager() {
     },
   ];
 
-  const { data, isLoading } = useReadContract({
-    address: POOL_MANAGER,
-    abi: abi,
-    functionName: "getAllPools",
-  });
-
-  const tokenCache = new Map<string, string>();
-
-  const buildDataSourceWithSymbols = async (
-    list: PoolInfo[],
-    setPoolDataSource: (data: PoolManagerData[]) => void
-  ) => {
-    if (!list || list.length === 0) return;
+  const buildDataSourceWithSymbols = async () => {
+    if (!pools || pools.length === 0) return;
 
     // 获取所有唯一 token 地址
     const tokenAddresses = Array.from(
-      new Set(list.flatMap((p) => [p.token0, p.token1]))
+      new Set(pools.flatMap((p) => [p.token0, p.token1]))
     );
 
     // 异步获取 token symbol
@@ -68,7 +57,7 @@ export function PoolManager() {
     );
 
     // 构建 Table 数据源
-    const ds: PoolManagerData[] = list.map((item) => {
+    const ds: PoolManagerData[] = pools.map((item) => {
       const converted = convertPoolInfoToManagerData(item);
       return {
         ...converted,
@@ -84,10 +73,8 @@ export function PoolManager() {
 
   // 在组件里 useEffect 调用
   useEffect(() => {
-    if (!data) return;
-
-    buildDataSourceWithSymbols(data as PoolInfo[], setPoolDataSource);
-  }, [data]);
+    buildDataSourceWithSymbols();
+  }, [pools]);
 
   return (
     <div className="pool-manager-wrap">

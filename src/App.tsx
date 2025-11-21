@@ -1,26 +1,25 @@
-import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { PoolManager } from "./components/PoolManager.tsx";
-import './App.css'
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { Outlet } from "react-router-dom";
+import "./App.css";
 
 function App() {
-    return (
-        <>
-            <div className="navi-bar">
-                <div className="navi-title">Simple Swap</div>
-                <div className="navi-center-container">
-                    <button className="navi-button">Swap</button>
-                    <button className="navi-button-selected">Pool</button>
-                </div>
-                <div className="navi-right-container">
-                    <ConnectButton/>
-                </div>
-            </div>
-            <div className="content-container">
-                <PoolManager/>
-            </div>
-        </>
-    )
+  return (
+    <>
+      <div className="navi-bar">
+        <div className="navi-title">Simple Swap</div>
+        <div className="navi-center-container">
+          <button className="navi-button">Swap</button>
+          <button className="navi-button-selected">Pool</button>
+        </div>
+        <div className="navi-right-container">
+          <ConnectButton />
+        </div>
+      </div>
+      <div className="content-container">
+        <Outlet />
+      </div>
+    </>
+  );
 }
 
-
-export default App
+export default App;
