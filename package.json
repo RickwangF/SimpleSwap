@@ -17,6 +17,7 @@
     "ethers": "^6.15.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.6",
     "viem": "^2.39.2",
     "wagmi": "^2.19.4"
   },
