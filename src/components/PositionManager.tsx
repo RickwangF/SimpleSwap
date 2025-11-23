@@ -6,7 +6,7 @@ import type { PositionManagerData } from "../type";
 import { usePoolManager } from "../PoolManagerContext";
 import { getTokenSymbol } from "../utils.ts";
 
-export function PositionManager() {
+export default function PositionManager() {
   const [positionDataSource, setPositionDataSource] = useState<
     PositionManagerData[]
   >([]);
@@ -43,13 +43,6 @@ export function PositionManager() {
       tokenCache.set(addr, symbol);
     }
     return tokenCache.get(addr)!;
-  };
-
-  const getPriceFromSqrtPriceX96 = (sqrtPriceX96: bigint): number => {
-    // price = sqrtPriceX96^2 / 2^192
-    const numerator = sqrtPriceX96 * sqrtPriceX96;
-    const denominator = 1n << 192n;
-    return Number(numerator / denominator);
   };
 
   const buildPositionManagerDataSource = async () => {

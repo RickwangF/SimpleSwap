@@ -3,12 +3,14 @@ import { Button, Table } from "antd";
 import type { PoolManagerData } from "../type.ts";
 import { convertPoolInfoToManagerData, getTokenSymbol } from "../utils.ts";
 import { usePoolManager } from "../PoolManagerContext.tsx";
+import { useNavigate } from "react-router-dom";
 
-export function PoolManager() {
+export default function PoolManager() {
   const { pools, isLoading } = usePoolManager();
   const [poolDataSource, setPoolDataSource] = useState<PoolManagerData[]>([]);
 
   const tokenCache = new Map<string, string>();
+  const navigate = useNavigate();
 
   const columns = [
     {
@@ -71,6 +73,14 @@ export function PoolManager() {
     setPoolDataSource(ds);
   };
 
+  const handleNavigateToAddPool = () => {
+    navigate("addPool");
+  };
+
+  const handleNavigateToPositions = () => {
+    navigate("positions");
+  };
+
   // 在组件里 useEffect 调用
   useEffect(() => {
     buildDataSourceWithSymbols();
@@ -85,8 +95,10 @@ export function PoolManager() {
         <div className="content-inner-top">
           <p>Pool List</p>
           <div className="content-inner-top-divider">
-            <Button>My Positions</Button>
-            <Button type="primary">Add Pool</Button>
+            <Button onClick={handleNavigateToPositions}>My Positions</Button>
+            <Button type="primary" onClick={handleNavigateToAddPool}>
+              Add Pool
+            </Button>
           </div>
         </div>
         <Table

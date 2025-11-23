@@ -48,3 +48,11 @@ export interface PositionManagerData {
   priceRange: string;
   currentPrice: number;
 }
+
+export type createPoolParams = {
+  tokenA: `0x${string}`;
+  tokenB: `0x${string}`;
+  tickLower: number;
+  tickUpper: number;
+  feeTier: number;
+};
