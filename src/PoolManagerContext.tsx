@@ -1,8 +1,12 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { useReadContract } from "wagmi";
-import type { PoolInfo } from "./type";
+import type { PoolInfo, PoolPairs } from "./type";
 import abi from "./ContractABI.json";
+import { getPublicClient } from "@wagmi/core";
+import { sepolia } from "viem/chains";
+import erc20ABI from "./ERC20ABI.json";
+import { config } from "./Providers";
 
 const POOL_MANAGER = "0xddC12b3F9F7C91C79DA7433D8d212FB78d609f7B";
 
@@ -20,6 +24,9 @@ interface PoolManagerContextType {
     tokenB: `0x${string}`
   ) => Promise<PoolInfo[]>;
   getPoolByAddress: (poolAddress: `0x${string}`) => PoolInfo | null;
+  getTokenSymbol: (address: `0x${string}`) => Promise<string>;
+  // 返回一个string: string的对象数组
+  pairs: PoolPairs[];
 }
 
 const PoolManagerContext = createContext<PoolManagerContextType>({
@@ -29,6 +36,8 @@ const PoolManagerContext = createContext<PoolManagerContextType>({
   getPool: async () => null,
   getPoolsByTokens: async () => [],
   getPoolByAddress: () => null,
+  getTokenSymbol: async (address) => address.slice(0, 6),
+  pairs: [],
 });
 
 export const usePoolManager = () => useContext(PoolManagerContext);
@@ -39,6 +48,7 @@ interface Props {
 
 export const PoolManagerProvider = ({ children }: Props) => {
   const [pools, setPools] = useState<PoolInfo[]>([]);
+  const [pairs, setPairs] = useState<PoolPairs[]>([]);
 
   const { data, isLoading, refetch } = useReadContract({
     address: POOL_MANAGER,
@@ -46,18 +56,30 @@ export const PoolManagerProvider = ({ children }: Props) => {
     functionName: "getAllPools",
   });
 
+  const { data: pairsData } = useReadContract({
+    address: POOL_MANAGER,
+    abi,
+    functionName: "getPairs",
+  });
+
+  // 使用 useRef 存 symbol 缓存
+  const symbolCache = useRef<Record<string, string>>({});
+
   useEffect(() => {
     if (data) {
       setPools(data as PoolInfo[]);
+      console.log("Pools data:", data);
     }
-  }, [data]);
+    if (pairsData) {
+      setPairs(pairsData as PoolPairs[]);
+    }
+  }, [data, pairsData]);
 
   const refreshPools = async () => {
     const result = await refetch?.();
     if (result?.data) setPools(result.data as PoolInfo[]);
   };
 
-  // 自动排序 token，使 token0 < token1
   const sortTokens = (tokenA: string, tokenB: string) =>
     tokenA.toLowerCase() < tokenB.toLowerCase()
       ? [tokenA, tokenB]
@@ -116,6 +138,36 @@ export const PoolManagerProvider = ({ children }: Props) => {
     pools.find((p) => p.pool.toLowerCase() === poolAddress.toLowerCase()) ??
     null;
 
+  // 新增方法：带缓存的 getTokenSymbol
+  const getTokenSymbol = async (address: `0x${string}`): Promise<string> => {
+    const key = address.toLowerCase();
+
+    // 如果缓存中有，直接返回
+    if (symbolCache.current[key]) {
+      return symbolCache.current[key];
+    }
+
+    try {
+      const client = getPublicClient(config, {
+        chainId: sepolia.id,
+      });
+      const symbol = (await client.readContract({
+        address,
+        abi: erc20ABI,
+        functionName: "symbol",
+      })) as string;
+
+      // 缓存 symbol
+      symbolCache.current[key] = symbol;
+      return symbol;
+    } catch (e) {
+      console.error(`Failed to fetch symbol for ${address}`, e);
+      const fallback = address.slice(0, 6);
+      symbolCache.current[key] = fallback;
+      return fallback;
+    }
+  };
+
   return (
     <PoolManagerContext.Provider
       value={{
@@ -125,6 +177,8 @@ export const PoolManagerProvider = ({ children }: Props) => {
         getPool,
         getPoolsByTokens,
         getPoolByAddress,
+        getTokenSymbol,
+        pairs,
       }}
     >
       {children}

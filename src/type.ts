@@ -56,3 +56,18 @@ export type createPoolParams = {
   tickUpper: number;
   feeTier: number;
 };
+
+export type PoolPairs = {
+  token0: `0x${string}`;
+  token1: `0x${string}`;
+};
+
+// struct MintParams {
+//     address token0;
+//     address token1;
+//     uint32 index;
+//     uint256 amount0Desired;
+//     uint256 amount1Desired;
+//     address recipient;
+//     uint256 deadline;
+// }

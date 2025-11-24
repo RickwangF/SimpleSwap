@@ -8,6 +8,7 @@ import erc20ABI from "./erc20ABI.json";
 import { sepolia } from "wagmi/chains";
 import { getPublicClient } from "wagmi/actions";
 import { config } from "./Providers"; // 注意导出 Wagmi 配置对象
+import Decimal from "decimal.js";
 
 export function sqrtPriceX96ToPrice(sqrtPriceX96: bigint) {
   // price = (sqrtPriceX96 / 2^96)^2
@@ -26,6 +27,12 @@ function formatAddress(addr: string, start = 6, end = 4) {
   return `${addr.slice(0, start)}...${addr.slice(-end)}`;
 }
 
+export function getPrice(sqrtPriceX96: bigint): number {
+  const Q96 = Decimal(2).pow(96);
+  const ratio = new Decimal(sqrtPriceX96.toString()).div(Q96);
+  return ratio.mul(ratio).toNumber(); // 当前 token1 / token0 价格
+}
+
 export function convertPoolInfoToManagerData(pool: PoolInfo): PoolManagerData {
   return {
     token: `${formatAddress(pool.token0)} / ${formatAddress(pool.token1)}`,
@@ -33,7 +40,7 @@ export function convertPoolInfoToManagerData(pool: PoolInfo): PoolManagerData {
     priceRange: `${tickToPrice(pool.tickLower)} ~ ${tickToPrice(
       pool.tickUpper
     )}`,
-    currentPrice: sqrtPriceX96ToPrice(pool.sqrtPriceX96),
+    currentPrice: getPrice(pool.sqrtPriceX96),
     liquidity: Number(pool.liquidity),
   };
 }
