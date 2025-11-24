@@ -4,7 +4,7 @@ import type {
   PositionInfo,
   PositionManagerData,
 } from "./type.ts";
-import erc20ABI from "./erc20ABI.json";
+import erc20ABI from "./ERC20ABI.json";
 import { sepolia } from "wagmi/chains";
 import { getPublicClient } from "wagmi/actions";
 import { config } from "./Providers"; // 注意导出 Wagmi 配置对象

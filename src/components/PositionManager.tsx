@@ -84,6 +84,9 @@ export default function PositionManager() {
       (pos) => pos.owner.toLowerCase() === address?.toLowerCase()
     );
 
+    // 打印filteredPositions以调试
+    console.log("Filtered Positions:", filteredPositions);
+
     if (filteredPositions.length === 0) {
       setPositionDataSource([]);
       return;
