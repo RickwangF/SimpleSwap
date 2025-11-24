@@ -5,10 +5,12 @@ import { usePositionManager } from "../PositionManagerContext";
 import type { PoolInfo, PositionManagerData } from "../type";
 import { usePoolManager } from "../PoolManagerContext";
 import { getPrice, convertPositionInfoToManagerData } from "../utils.ts";
-import { Divider, Input } from "antd";
+import { Input } from "antd";
 import { useAccount, useWriteContract } from "wagmi";
+import { readContract } from "@wagmi/core";
 import erc20ABI from "../ERC20ABI.json";
 import PosistionAbi from "../PosistionABI.json";
+import { config } from "../Providers";
 
 export default function PositionManager() {
   const POSITION_MANAGER = "0xbe766Bf20eFfe431829C5d5a2744865974A0B610";
@@ -19,12 +21,15 @@ export default function PositionManager() {
   const [feeTier, setFeeTier] = useState<number>(1000);
   const [token0Amount, setToken0Amount] = useState<number>(0);
   const [token1Amount, setToken1Amount] = useState<number>(0);
+  const [token0Balance, setToken0Balance] = useState<number>(0);
+  const [token1Balance, setToken1Balance] = useState<number>(0);
+
   const [currentPool, setCurrentPool] = useState<PoolInfo>({} as PoolInfo);
   const [currentPrice, setCurrentPrice] = useState<number>(0);
   const [positionDataSource, setPositionDataSource] = useState<
     PositionManagerData[]
   >([]);
-  const { pools, getPool, pairs, getTokenSymbol } = usePoolManager();
+  const { pools, pairs, getTokenSymbol } = usePoolManager();
   const [symbolArray, setSymbolArray] = useState<
     { value: string; label: string }[]
   >([]);
@@ -58,13 +63,18 @@ export default function PositionManager() {
 
   const buildPositionManagerDataSource = async () => {
     if (!positions || positions.length === 0) return;
+    if (!address) return;
 
     // 从positions中过滤owner为address的头寸
     const filteredPositions = positions.filter(
       (pos) => pos.owner.toLowerCase() === address?.toLowerCase()
     );
 
-    const formatted: PositionManagerData[] = [];
+    if (filteredPositions.length === 0) {
+      setPositionDataSource([]);
+      return;
+    }
+
     let tempPositionDatas: PositionManagerData[] = [];
     tempPositionDatas = filteredPositions.map((pos) => {
       const positionData: PositionManagerData =
@@ -73,25 +83,36 @@ export default function PositionManager() {
     });
     setPositionDataSource(tempPositionDatas);
 
-    for (const pos of filteredPositions) {
-      const pool = await getPool(pos.token0, pos.token1, pos.index);
-      if (!pool) continue;
+    const formatted = await Promise.all(
+      filteredPositions.map(async (pos) => {
+        try {
+          const pool = pools.find(
+            (p) =>
+              p.token0 === pos.token0 &&
+              p.token1 === pos.token1 &&
+              p.index === pos.index
+          );
+          if (!pool) return null;
+          const sqrtPriceX96: bigint = pool.sqrtPriceX96;
+          const token0Symbol = await getTokenSymbol(pos.token0);
+          const token1Symbol = await getTokenSymbol(pos.token1);
 
-      const sqrtPriceX96: bigint = pool.sqrtPriceX96;
+          return {
+            key: pos.index.toString(),
+            token: `${token0Symbol}/${token1Symbol}`,
+            feeTier: `${pos.fee / 10000}%`,
+            priceRange: `${pos.tickLower} ~ ${pos.tickUpper}`,
+            currentPrice: getPrice(sqrtPriceX96),
+          };
+        } catch (e) {
+          console.error("Failed to process position", pos.index, e);
+          return null; // 出错则跳过
+        }
+      })
+    );
 
-      const token0Symbol = await getTokenSymbol(pos.token0);
-      const token1Symbol = await getTokenSymbol(pos.token1);
-
-      formatted.push({
-        key: pos.index.toString(),
-        token: `${token0Symbol}/${token1Symbol}`,
-        feeTier: `${pos.fee / 10000}%`,
-        priceRange: `${pos.tickLower} ~ ${pos.tickUpper}`,
-        currentPrice: getPrice(sqrtPriceX96),
-      });
-    }
-
-    setPositionDataSource(formatted);
+    // 过滤掉 null
+    setPositionDataSource(formatted.filter(Boolean) as PositionManagerData[]);
   };
 
   const buildPairsArray = async () => {
@@ -225,14 +246,41 @@ export default function PositionManager() {
     setModalIsOpen(false);
   };
 
+  const updateTokenBalances = async (
+    tokenAddress: `0x${string}`,
+    isToken0: boolean
+  ) => {
+    if (!isConnected || !address) return;
+
+    // 获取 token0 余额
+    const token0Data = await readContract(config, {
+      address: tokenAddress,
+      abi: erc20ABI,
+      functionName: "balanceOf",
+      args: [address as `0x${string}`],
+    });
+
+    if (isToken0) {
+      setToken0Balance(Number(token0Data ? token0Data : BigInt(0)) / 10 ** 18);
+    } else {
+      setToken1Balance(Number(token0Data ? token0Data : BigInt(0)) / 10 ** 18);
+    }
+  };
+
+  // 获取 token1 余额
+
   const handleToken0Change = (value: string) => {
     console.log(value); // { value: "tom", key: "tom", label: "Tom (100)" }
     setToken0Address(value as `0x${string}`);
+
+    updateTokenBalances(value as `0x${string}`, true);
   };
 
   const handleToken1Change = (value: string) => {
     console.log(value); // { value: "lucy", key: "lucy", label: "Lucy (101)" }
     setToken1Address(value as `0x${string}`);
+
+    updateTokenBalances(value as `0x${string}`, false);
   };
 
   const handleFeeTierChange = (value: number) => {
@@ -262,7 +310,7 @@ export default function PositionManager() {
   useEffect(() => {
     console.log("Positions:", positions);
     buildPositionManagerDataSource();
-  }, [positions, pools]);
+  }, [positions, address, pools]);
 
   useEffect(() => {
     console.log("Pairs data:", pairs);
@@ -336,10 +384,9 @@ export default function PositionManager() {
             </div>
             <div className="input-display-item">$0.00</div>
             <div className="balance-item">
-              Balance: <span>0.0</span>
+              Balance: <span>{token0Balance}</span>
             </div>
           </div>
-          <Divider />
           <div className="add-position-token-wrap">
             <div className="input-item">
               <Input
@@ -360,7 +407,7 @@ export default function PositionManager() {
             </div>
             <div className="input-display-item">$0.00</div>
             <div className="balance-item">
-              Balance: <span>0.0</span>
+              Balance: <span>{token1Balance}</span>
             </div>
           </div>
           <div className="add-position-form-title">

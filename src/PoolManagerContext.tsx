@@ -9,6 +9,7 @@ import erc20ABI from "./ERC20ABI.json";
 import { config } from "./Providers";
 
 const POOL_MANAGER = "0xddC12b3F9F7C91C79DA7433D8d212FB78d609f7B";
+const ETH_PLACEHOLDER = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
 interface PoolManagerContextType {
   pools: PoolInfo[];
@@ -140,6 +141,15 @@ export const PoolManagerProvider = ({ children }: Props) => {
 
   // 新增方法：带缓存的 getTokenSymbol
   const getTokenSymbol = async (address: `0x${string}`): Promise<string> => {
+    // ETH 地址占位符处理
+    if (address.toLowerCase() === ETH_PLACEHOLDER.toLowerCase()) {
+      return "ETH";
+    }
+
+    if (address === "0x") {
+      return "-";
+    }
+
     const key = address.toLowerCase();
 
     // 如果缓存中有，直接返回
@@ -151,6 +161,7 @@ export const PoolManagerProvider = ({ children }: Props) => {
       const client = getPublicClient(config, {
         chainId: sepolia.id,
       });
+
       const symbol = (await client.readContract({
         address,
         abi: erc20ABI,
