@@ -1,4 +1,4 @@
-import { Button, Table, Modal, Select } from "antd";
+import { Button, Table, Modal, Select, Space } from "antd";
 import type { TableProps } from "antd";
 import { useEffect, useState } from "react";
 import { usePositionManager } from "../PositionManagerContext";
@@ -59,6 +59,20 @@ export default function PositionManager() {
       dataIndex: "currentPrice",
       key: "currentPrice",
     },
+    {
+      title: "Action",
+      key: "action",
+      render: (_, record) => (
+        <Space size="middle">
+          <Button type="link" onClick={() => handlePositionRemove(record.key)}>
+            Remove
+          </Button>
+          <Button type="link" onClick={() => handlePositionCollect(record.key)}>
+            Collect
+          </Button>
+        </Space>
+      ),
+    },
   ];
 
   const buildPositionManagerDataSource = async () => {
@@ -98,7 +112,7 @@ export default function PositionManager() {
           const token1Symbol = await getTokenSymbol(pos.token1);
 
           return {
-            key: pos.index.toString(),
+            key: pos.id.toString(),
             token: `${token0Symbol}/${token1Symbol}`,
             feeTier: `${pos.fee / 10000}%`,
             priceRange: `${pos.tickLower} ~ ${pos.tickUpper}`,
@@ -304,6 +318,57 @@ export default function PositionManager() {
       setToken1Amount(0);
     } else {
       setToken1Amount(amount);
+    }
+  };
+
+  const handlePositionRemove = async (positionKey: string) => {
+    // 找出对应的position
+    const position = positions.find((pos) => pos.id.toString() === positionKey);
+    if (!position) {
+      alert("Position not found");
+      return;
+    }
+
+    try {
+      const tx = await writeContractAsync({
+        address: POSITION_MANAGER,
+        abi: PosistionAbi,
+        functionName: "burn",
+        args: [BigInt(position.id)],
+      });
+
+      console.log("Position remove tx:", tx);
+      alert("Remove position transaction sent, tx hash: " + tx);
+      refreshPositions();
+    } catch (e) {
+      console.error("Failed to remove position", e);
+      alert("Failed to remove position: " + e);
+      return;
+    }
+  };
+
+  const handlePositionCollect = async (positionKey: string) => {
+    // 找出对应的position
+    const position = positions.find((pos) => pos.id.toString() === positionKey);
+    if (!position) {
+      alert("Position not found");
+      return;
+    }
+
+    try {
+      const tx = await writeContractAsync({
+        address: POSITION_MANAGER,
+        abi: PosistionAbi,
+        functionName: "collect",
+        args: [BigInt(position.id), address as `0x${string}`],
+      });
+      console.log("Position collect tx:", tx);
+      alert("Collect position fees transaction sent, tx hash: " + tx);
+      refreshPositions();
+    } catch (e) {
+      console.error("Failed to collect position fees", e);
+      alert("Failed to collect position fees: " + e);
+      return;
     }
   };
 
