@@ -7,9 +7,7 @@ import { getPublicClient } from "@wagmi/core";
 import { sepolia } from "viem/chains";
 import erc20ABI from "./ERC20ABI.json";
 import { config } from "./Providers";
-
-const POOL_MANAGER = "0xddC12b3F9F7C91C79DA7433D8d212FB78d609f7B";
-const ETH_PLACEHOLDER = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+import { POOL_MANAGER, ETH_PLACEHOLDER } from "./const";
 
 interface PoolManagerContextType {
   pools: PoolInfo[];
@@ -69,6 +67,11 @@ export const PoolManagerProvider = ({ children }: Props) => {
   useEffect(() => {
     if (data) {
       setPools(data as PoolInfo[]);
+      pools.map((pool) => {
+        console.log("Pool address:", pool.pool);
+        getTokenSymbol(pool.token0);
+        getTokenSymbol(pool.token1);
+      });
       console.log("Pools data:", data);
     }
     if (pairsData) {

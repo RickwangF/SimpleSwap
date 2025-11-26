@@ -1,15 +1,22 @@
 import { useState, useEffect } from "react";
 import { Button, Table } from "antd";
 import type { PoolManagerData } from "../type.ts";
-import { convertPoolInfoToManagerData, getTokenSymbol } from "../utils.ts";
+import {
+  convertPoolInfoToManagerData,
+  getTokenSymbol,
+  getBalance,
+} from "../utils.ts";
 import { usePoolManager } from "../PoolManagerContext.tsx";
 import { useNavigate } from "react-router-dom";
+import { POOL_MANAGER } from "../const.ts";
 
 export default function PoolManager() {
-  const { pools, isLoading } = usePoolManager();
+  const { pools } = usePoolManager();
   const [poolDataSource, setPoolDataSource] = useState<PoolManagerData[]>([]);
+  const [dataSourceLoading, setDataSourceLoading] = useState<boolean>(true);
 
   const tokenCache = new Map<string, string>();
+  const ballanceCache = new Map<string, bigint>();
   const navigate = useNavigate();
 
   const columns = [
@@ -58,18 +65,38 @@ export default function PoolManager() {
       })
     );
 
+    // 异步获取 token balance
+    await Promise.all(
+      pools.map(async (pool) => {
+        const cache0Key = `${pool.pool}-${pool.token0}`;
+        const cache1Key = `${pool.pool}-${pool.token1}`;
+        if (!ballanceCache.has(cache0Key)) {
+          const balance0 = await getBalance(pool.token0, pool.pool);
+          ballanceCache.set(cache0Key, balance0);
+        }
+        if (!ballanceCache.has(cache1Key)) {
+          const balance1 = await getBalance(pool.token1, pool.pool);
+          ballanceCache.set(cache1Key, balance1);
+        }
+      })
+    );
+
     // 构建 Table 数据源
     const ds: PoolManagerData[] = pools.map((item) => {
       const converted = convertPoolInfoToManagerData(item);
+      const token0Balance = ballanceCache.get(`${item.pool}-${item.token0}`);
+      const token1Balance = ballanceCache.get(`${item.pool}-${item.token1}`);
       return {
         ...converted,
         key: item.pool,
-        token: `${tokenCache.get(item.token0)} / ${tokenCache.get(
+        token: `${tokenCache.get(
+          item.token0
+        )}(${token0Balance}) / ${tokenCache.get(
           item.token1
-        )}`,
+        )}(${token1Balance})`,
       };
     });
-
+    setDataSourceLoading(false);
     setPoolDataSource(ds);
   };
 
@@ -104,7 +131,7 @@ export default function PoolManager() {
         <Table
           columns={columns}
           dataSource={poolDataSource}
-          loading={isLoading}
+          loading={dataSourceLoading}
         />
       </div>
     </div>

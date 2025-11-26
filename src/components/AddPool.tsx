@@ -3,12 +3,13 @@ import { useAccount } from "wagmi";
 import { useWriteContract } from "wagmi";
 import ContactABI from "../ContractABI.json";
 import type { createPoolParams } from "../type";
+import { POOL_MANAGER } from "../const";
 
 export default function AddPool() {
   const { address, isConnected } = useAccount();
   const { writeContractAsync } = useWriteContract();
 
-  const handleCreatePool = () => {
+  const handleCreatePool = async () => {
     if (!isConnected || !address) {
       alert("请先连接钱包");
       return;
@@ -20,9 +21,16 @@ export default function AddPool() {
       "feeTier"
     ) as HTMLSelectElement;
 
-    const token0 = token0Input.value.trim();
-    const token1 = token1Input.value.trim();
+    let token0 = token0Input.value.trim();
+    let token1 = token1Input.value.trim();
     const feeTier = parseInt(feeTierSelect.value);
+
+    if (token0.toLowerCase() > token1.toLowerCase()) {
+      const temp0 = token1;
+      const temp1 = token0;
+      token0 = temp0;
+      token1 = temp1;
+    }
 
     if (!token0 || !token1) {
       alert("Token 地址不能为空");
@@ -34,33 +42,33 @@ export default function AddPool() {
       return;
     }
 
+    if (token0 === token1) {
+      alert("Token 地址不能相同");
+      return;
+    }
+
     const createPoolParams: createPoolParams = {
-      tokenA: token0 as `0x${string}`,
-      tokenB: token1 as `0x${string}`,
+      token0: token0 as `0x${string}`,
+      token1: token1 as `0x${string}`,
       tickLower: 0,
       tickUpper: 0,
-      feeTier: feeTier,
+      fee: feeTier,
+      sqrtPriceX96: BigInt(0),
     };
 
-    writeContractAsync({
-      address: "0xddC12b3F9F7C91C79DA7433D8d212FB78d609f7B",
-      abi: ContactABI,
-      functionName: "createPool",
-      args: [
-        createPoolParams.tokenA,
-        createPoolParams.tokenB,
-        createPoolParams.tickLower,
-        createPoolParams.tickUpper,
-        createPoolParams.feeTier,
-      ],
-    })
-      .then((tx) => {
-        alert(`池子创建交易已发送，交易哈希: ${tx}`);
-      })
-      .catch((error) => {
-        console.error("创建池子失败:", error);
-        alert(`创建池子失败: ${error.message || error}`);
+    try {
+      const tx = await writeContractAsync({
+        address: POOL_MANAGER,
+        abi: ContactABI,
+        functionName: "createAndInitializePoolIfNecessary",
+        args: [createPoolParams],
       });
+      console.log("创建池子交易已发送:", tx);
+      alert(`创建池子交易已发送: ${tx}`);
+    } catch (error) {
+      console.error("创建池子失败:", error as Error);
+      alert(`创建池子失败: ${error as Error}`);
+    }
   };
 
   return (

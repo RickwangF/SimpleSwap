@@ -50,11 +50,10 @@ export interface PositionManagerData {
 }
 
 export type createPoolParams = {
-  tokenA: `0x${string}`;
-  tokenB: `0x${string}`;
-  tickLower: number;
-  tickUpper: number;
-  feeTier: number;
+  token0: `0x${string}`;
+  token1: `0x${string}`;
+  fee: number;
+  sqrtPriceX96: bigint;
 };
 
 export type PoolPairs = {

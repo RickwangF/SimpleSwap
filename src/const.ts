@@ -1,0 +1,19 @@
+const POOL_MANAGER = "0xddC12b3F9F7C91C79DA7433D8d212FB78d609f7B";
+const ETH_PLACEHOLDER = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+const tokenTestA = "0x4798388e3adE569570Df626040F07DF71135C48E";
+const tokenTestB = "0x5A4eA3a013D42Cfd1B1609d19f6eA998EeE06D30";
+const tokenTestC = "0x86B5df6FF459854ca91318274E47F4eEE245CF28";
+const tokenTestD = "0x7af86B1034AC4C925Ef5C3F637D1092310d83F03";
+const RickCC = "0xB702386E1D25BcAD2E2f8745392F26204B934116";
+const RickDD = "0x60C0C80D93abd46B0544aFB6e27528b3d7a69b7E";
+
+export {
+  POOL_MANAGER,
+  ETH_PLACEHOLDER,
+  tokenTestA,
+  tokenTestB,
+  tokenTestC,
+  tokenTestD,
+  RickCC,
+  RickDD,
+};

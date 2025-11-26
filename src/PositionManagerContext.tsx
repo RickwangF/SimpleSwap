@@ -5,7 +5,6 @@ import type { PositionInfo } from "./type";
 import abi from "./PosistionABI.json";
 
 const POSITION_MANAGER = "0xbe766Bf20eFfe431829C5d5a2744865974A0B610";
-
 interface PositionManagerContextType {
   positions: PositionInfo[];
   isLoading: boolean;

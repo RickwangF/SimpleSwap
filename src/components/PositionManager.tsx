@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 import { usePositionManager } from "../PositionManagerContext";
 import type { PoolInfo, PositionManagerData } from "../type";
 import { usePoolManager } from "../PoolManagerContext";
-import { getPrice, convertPositionInfoToManagerData } from "../utils.ts";
+import {
+  getPrice,
+  convertPositionInfoToManagerData,
+  formatPriceRange,
+} from "../utils.ts";
 import { Input } from "antd";
 import { useAccount, useWriteContract } from "wagmi";
 import { readContract } from "@wagmi/core";
@@ -81,7 +85,8 @@ export default function PositionManager() {
 
     // 从positions中过滤owner为address的头寸
     const filteredPositions = positions.filter(
-      (pos) => pos.owner.toLowerCase() === address?.toLowerCase()
+      (pos) =>
+        pos.owner.toLowerCase() === address?.toLowerCase() && pos.liquidity > 0
     );
 
     // 打印filteredPositions以调试
@@ -116,9 +121,11 @@ export default function PositionManager() {
 
           return {
             key: pos.id.toString(),
-            token: `${token0Symbol}/${token1Symbol}`,
+            token: `${token0Symbol}(${
+              Number(pos.tokensOwed0) / 10 ** 18
+            })/${token1Symbol}(${Number(pos.tokensOwed1) / 10 ** 18})`,
             feeTier: `${pos.fee / 10000}%`,
-            priceRange: `${pos.tickLower} ~ ${pos.tickUpper}`,
+            priceRange: formatPriceRange(pos.tickLower, pos.tickUpper),
             currentPrice: getPrice(sqrtPriceX96),
           };
         } catch (e) {
