@@ -181,6 +181,10 @@
   padding: 20px;
 }
 
+.position-relative {
+  position: relative;
+}
+
 .add-position-label {
   font-size: 18px;
   font-weight: 600;
@@ -199,6 +203,10 @@
   border: 1px solid #ebebeb;
   border-radius: 5px;
   gap: 20px;
+}
+
+.add-position-token-wrap:hover {
+  border-color: #1677ff;
 }
 
 .add-position-token-wrap .input-item {
@@ -288,4 +296,28 @@
 
 .swap-button {
   height: 45px;
+}
+
+.replace-wrap {
+  position: absolute;
+  top: 43%;
+  left: 45%;
+  width: 50px;
+  height: 50px;
+  border-radius: 4px;
+  background-color: #ffffff;
+  border: 1px solid #ebebeb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.replace-wrap:hover {
+  border: 1px solid #1677ff;
+}
+
+.replace-wrap img {
+  width: 35px;
+  height: 35px;
 }

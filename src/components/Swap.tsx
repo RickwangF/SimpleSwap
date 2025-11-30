@@ -15,12 +15,13 @@ import {
   MAX_SQRT_RATIO,
 } from "../const";
 import { parseUnits, formatUnits } from "viem";
+import replaceIcon from "../assets/replace.png";
 
 export default function Swap() {
   const { writeContractAsync } = useWriteContract();
   const { address, isConnected } = useAccount();
-  const [token0Address, setToken0Address] = useState<`0x${string}`>("0x0");
-  const [token1Address, setToken1Address] = useState<`0x${string}`>("0x0");
+  const [token0Address, setToken0Address] = useState<string>("");
+  const [token1Address, setToken1Address] = useState<string>("");
   const [token0Amount, setToken0Amount] = useState<string>("0");
   const [token1Amount, setToken1Amount] = useState<string>("0");
   const [token0Balance, setToken0Balance] = useState<number>(0);
@@ -110,7 +111,56 @@ export default function Swap() {
     setSymbolArray(options);
   };
 
-  const findBestPool = async () => {
+  const handleReplaceClick = () => {
+    if (!token0Address || !token1Address) {
+      alert("Both tokens must be selected to swap.");
+      return;
+    }
+
+    const previousToken0 = token0Address;
+    const previousToken1 = token1Address;
+
+    const previousToken0Amount = token0Amount;
+    const previousToken1Amount = token1Amount;
+
+    const existAmountInputed =
+      (previousToken0Amount != null && previousToken0Amount !== "0") ||
+      (previousToken1Amount != null && previousToken1Amount !== "0");
+
+    if (existAmountInputed) {
+      handleToken0Change(previousToken1);
+      handleToken1Change(previousToken0);
+      if (isExactInput) {
+        // token0 → token1
+        setToken1Amount(previousToken0Amount);
+        setIsExactInput(false);
+        setToken0Amount("0");
+        setIsTyping(true);
+      } else {
+        // token1 → token0
+        setToken0Amount(previousToken1Amount);
+        setIsExactInput(true);
+        setToken1Amount("0");
+        setIsTyping(true);
+      }
+    }
+  };
+
+  const findMatchedPools = () => {
+    if (!token0Address || !token1Address) return [];
+
+    const matchedPools = pools.filter(
+      (p) =>
+        (p.token0.toLowerCase() === token0Address.toLowerCase() &&
+          p.token1.toLowerCase() === token1Address.toLowerCase()) ||
+        (p.token0.toLowerCase() === token1Address.toLowerCase() &&
+          p.token1.toLowerCase() === token0Address.toLowerCase())
+    );
+
+    return matchedPools;
+  };
+
+  const quoteExactInputOrOutput = async () => {
     if (!token0Address || !token1Address) return;
     if (token0Address === token1Address) return;
     if (!pools || pools.length === 0) return;
@@ -126,11 +176,7 @@ export default function Swap() {
       token0Address.toLowerCase() < token1Address.toLowerCase();
 
     try {
-      const matchedPools = pools.filter(
-        (p) =>
-          p.token0.toLowerCase() === token0Address.toLowerCase() &&
-          p.token1.toLowerCase() === token1Address.toLowerCase()
-      );
+      const matchedPools = findMatchedPools();
 
       if (matchedPools.length === 0) {
         setBestPool(null);
@@ -140,6 +186,9 @@ export default function Swap() {
       // token0 → token1  (exactInput)
       if (isExactInput) {
         const amountIn = parseUnits(token0Amount || "0", 18);
+        const sqrtPriceLimitX96 = zeroForOne
+          ? MIN_SQRT_RATIO + 1n
+          : MAX_SQRT_RATIO - 1n;
 
         try {
           const result = await publicClient.simulateContract({
@@ -152,7 +201,7 @@ export default function Swap() {
                 tokenOut: token1Address,
                 indexPath: matchedPools.map((p) => p.index),
                 amountIn,
-                sqrtPriceLimitX96: MIN_SQRT_RATIO + 1n,
+                sqrtPriceLimitX96: sqrtPriceLimitX96,
               },
             ],
           });
@@ -166,6 +215,9 @@ export default function Swap() {
         // token1 → token0 (exactOutput)
         if (amount1 > 0) {
           const amountOut = parseUnits(token1Amount || "0", 18);
+          const sqrtPriceLimitX96 = zeroForOne
+            ? MIN_SQRT_RATIO + 1n
+            : MAX_SQRT_RATIO - 1n;
 
           try {
             const result = await publicClient.simulateContract({
@@ -178,7 +230,7 @@ export default function Swap() {
                   tokenOut: token1Address,
                   indexPath: matchedPools.map((p) => p.index),
                   amountOut,
-                  sqrtPriceLimitX96: MIN_SQRT_RATIO + 1n,
+                  sqrtPriceLimitX96: sqrtPriceLimitX96,
                 },
               ],
             });
@@ -197,11 +249,6 @@ export default function Swap() {
   };
 
   const handleSwapButtonClick = async () => {
-    if (!bestPool) {
-      alert("No best pool found for the selected token pair.");
-      return;
-    }
-
     if (token0Amount === "0" || token1Amount === "0") {
       alert("Can't swap zero amount.");
       return;
@@ -212,11 +259,27 @@ export default function Swap() {
       return;
     }
 
+    const matchedPools = findMatchedPools();
+
+    if (matchedPools.length === 0) {
+      alert("No available pool for the selected token pair.");
+      return;
+    }
+
     const amount0 = parseUnits(token0Amount || "0", 18);
     const amount1 = parseUnits(token1Amount || "0", 18);
 
+    const token0Addr = token0Address as `0x${string}`;
+    const token1Addr = token1Address as `0x${string}`;
+
     const now = Math.floor(Date.now() / 1000);
-    const deadline = BigInt(now + 600); // 10 min
+    const deadline = BigInt(now + 3600); // 1 hour from now
+    const zeroForOne =
+      token0Address.toLowerCase() < token1Address.toLowerCase();
+
+    const sqrtPriceLimitX96 = zeroForOne
+      ? MIN_SQRT_RATIO + 1n
+      : MAX_SQRT_RATIO - 1n;
 
     try {
       if (isExactInput) {
@@ -224,7 +287,7 @@ export default function Swap() {
 
         // 1) approve token0 to SwapRouter
         await writeContractAsync({
-          address: token0Address,
+          address: token0Addr,
           abi: erc20ABI,
           functionName: "approve",
           args: [SWAP_ROUTER_ADDRESS, amount0],
@@ -239,12 +302,12 @@ export default function Swap() {
             {
               tokenIn: token0Address,
               tokenOut: token1Address,
-              indexPath: [bestPool.index],
+              indexPath: matchedPools.map((p) => p.index),
               recipient: address,
               deadline,
               amountIn: amount0,
               amountOutMinimum: 0n, // 不做滑点保护
-              sqrtPriceLimitX96: bestPool.sqrtPriceX96,
+              sqrtPriceLimitX96: sqrtPriceLimitX96,
             },
           ],
         });
@@ -254,12 +317,16 @@ export default function Swap() {
       } else {
         console.log("swap: exactOutput (token1 → token0)");
 
+        const estimatedAmountIn = parseUnits(token0Amount || "0", 18);
+        const amountInMaximum =
+          estimatedAmountIn + (estimatedAmountIn / 100n) * 5n; // 多支付5%以防不足
+
         // 1) approve token1 to SwapRouter
         await writeContractAsync({
-          address: token1Address,
+          address: token0Addr,
           abi: erc20ABI,
           functionName: "approve",
-          args: [SWAP_ROUTER_ADDRESS, amount1],
+          args: [SWAP_ROUTER_ADDRESS, amountInMaximum],
         });
 
         // 2) call exactOutput
@@ -271,12 +338,12 @@ export default function Swap() {
             {
               tokenIn: token0Address,
               tokenOut: token1Address,
-              indexPath: [bestPool.index],
+              indexPath: matchedPools.map((p) => p.index),
               recipient: address,
               deadline,
               amountOut: amount1,
-              amountInMaximum: 0n, // 不做滑点保护
-              sqrtPriceLimitX96: bestPool.sqrtPriceX96,
+              amountInMaximum,
+              sqrtPriceLimitX96: sqrtPriceLimitX96,
             },
           ],
         });
@@ -298,7 +365,7 @@ export default function Swap() {
     if (!isTyping) return;
 
     const timer = setTimeout(() => {
-      findBestPool();
+      quoteExactInputOrOutput();
       setIsTyping(false);
     }, 300); // debounce
 
@@ -310,7 +377,7 @@ export default function Swap() {
       <div className="swap-container">
         <h2 className="swap-title">Swap</h2>
         <div className="swap-content">
-          <div className="add-position-form">
+          <div className="add-position-form position-relative">
             <div className="add-position-form-title">
               <label className="add-position-label">
                 Deposite amounts<span>*</span>
@@ -331,6 +398,7 @@ export default function Swap() {
                 <Select
                   options={symbolArray}
                   onChange={handleToken0Change}
+                  value={token0Address}
                   style={{
                     minWidth: "150px",
                     height: "45px",
@@ -357,6 +425,7 @@ export default function Swap() {
               </div>
               <div className="select-item">
                 <Select
+                  value={token1Address}
                   options={symbolArray}
                   onChange={handleToken1Change}
                   style={{ minWidth: "150px", height: "45px" }}
@@ -366,6 +435,9 @@ export default function Swap() {
               <div className="balance-item">
                 Balance: <span>{token1Balance}</span>
               </div>
+            </div>
+            <div className="replace-wrap" onClick={handleReplaceClick}>
+              <img src={replaceIcon} alt="Replace" />
             </div>
             <Button
               type="primary"
