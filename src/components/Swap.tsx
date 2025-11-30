@@ -2,12 +2,18 @@ import { useEffect, useState } from "react";
 import { Button, Input, Select } from "antd";
 import { usePoolManager } from "../PoolManagerContext";
 import type { PoolInfo } from "../type.ts";
-import { useAccount, useWriteContract } from "wagmi";
+import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { readContract } from "@wagmi/core";
 import erc20ABI from "../ERC20ABI.json";
 import { config } from "../Providers";
 import SwapABI from "../SwapABI.json";
-import { SWAP_ROUTER_ADDRESS } from "../const";
+import {
+  SWAP_ROUTER_ADDRESS,
+  MIN_TICK,
+  MAX_TICK,
+  MIN_SQRT_RATIO,
+  MAX_SQRT_RATIO,
+} from "../const";
 import { parseUnits, formatUnits } from "viem";
 
 export default function Swap() {
@@ -26,6 +32,7 @@ export default function Swap() {
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const [isExactInput, setIsExactInput] = useState<boolean>(true);
   const [bestPool, setBestPool] = useState<PoolInfo | null>(null);
+  const publicClient = usePublicClient();
 
   const handleToken0ChangeAmount = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -107,12 +114,16 @@ export default function Swap() {
     if (!token0Address || !token1Address) return;
     if (token0Address === token1Address) return;
     if (!pools || pools.length === 0) return;
+    if (!publicClient) return;
 
     const amount0 = Number(token0Amount);
     const amount1 = Number(token1Amount);
 
     // 用户没有输入数量
     if (amount0 <= 0 && amount1 <= 0) return;
+
+    const zeroForOne =
+      token0Address.toLowerCase() < token1Address.toLowerCase();
 
     try {
       const matchedPools = pools.filter(
@@ -126,92 +137,58 @@ export default function Swap() {
         return;
       }
 
-      let best = null;
-
       // token0 → token1  (exactInput)
       if (isExactInput) {
-        const amountIn = BigInt(Math.floor(amount0 * 1e18));
+        const amountIn = parseUnits(token0Amount || "0", 18);
 
-        const results = await Promise.all(
-          matchedPools.map(async (pool) => {
-            try {
-              const out = await readContract(config, {
-                address: pool.pool,
-                abi: SwapABI,
-                functionName: "quoteExactInput",
-                args: [
-                  {
-                    tokenIn: token0Address,
-                    tokenOut: token1Address,
-                    indexPath: [pool.index],
-                    amountIn,
-                    sqrtPriceLimitX96: pool.sqrtPriceX96,
-                  },
-                ],
-              });
-
-              return {
-                pool,
-                amountOut: out as bigint,
-              };
-            } catch (err) {
-              console.error("quoteExactInput error:", err);
-              return { pool, amountOut: 0n };
-            }
-          })
-        );
-
-        best = results.reduce((max, cur) =>
-          cur.amountOut > max.amountOut ? cur : max
-        );
-
-        setBestPool(best.pool);
-        setToken1Amount(formatUnits(best.amountOut, 18));
+        try {
+          const result = await publicClient.simulateContract({
+            address: SWAP_ROUTER_ADDRESS,
+            abi: SwapABI,
+            functionName: "quoteExactInput",
+            args: [
+              {
+                tokenIn: token0Address,
+                tokenOut: token1Address,
+                indexPath: matchedPools.map((p) => p.index),
+                amountIn,
+                sqrtPriceLimitX96: MIN_SQRT_RATIO + 1n,
+              },
+            ],
+          });
+          console.log("quoteExactInput out:", result);
+          const amountOut = result.result as bigint;
+          setToken1Amount(formatUnits(amountOut, 18));
+        } catch (err) {
+          console.error("quoteExactInput error:", err);
+        }
       } else {
         // token1 → token0 (exactOutput)
         if (amount1 > 0) {
-          const amountOut = BigInt(Math.floor(amount1 * 1e18));
+          const amountOut = parseUnits(token1Amount || "0", 18);
 
-          const results = await Promise.all(
-            matchedPools.map(async (pool) => {
-              try {
-                const amountIn = await readContract(config, {
-                  address: pool.pool,
-                  abi: SwapABI,
-                  functionName: "quoteExactOutput",
-                  args: [
-                    {
-                      tokenIn: token0Address,
-                      tokenOut: token1Address,
-                      indexPath: [pool.index],
-                      amountOut,
-                      sqrtPriceLimitX96: pool.sqrtPriceX96,
-                    },
-                  ],
-                });
+          try {
+            const result = await publicClient.simulateContract({
+              address: SWAP_ROUTER_ADDRESS,
+              abi: SwapABI,
+              functionName: "quoteExactOutput",
+              args: [
+                {
+                  tokenIn: token0Address,
+                  tokenOut: token1Address,
+                  indexPath: matchedPools.map((p) => p.index),
+                  amountOut,
+                  sqrtPriceLimitX96: MIN_SQRT_RATIO + 1n,
+                },
+              ],
+            });
 
-                return {
-                  pool,
-                  amountIn: amountIn as bigint,
-                };
-              } catch (err) {
-                console.error("quoteExactOutput error:", err);
-                return { pool, amountIn: 2n ** 255n }; // 设置为一个巨大的值，确保不会被选中
-              }
-            })
-          );
-
-          best = results.reduce((min, cur) =>
-            cur.amountIn < min.amountIn ? cur : min
-          );
-
-          setBestPool(best.pool);
-          console.log("Best pool for quoteExactOutput:", best.amountIn);
-          console.log(
-            "Formatted token0 amount:",
-            formatUnits(best.amountIn, 18)
-          );
-          setToken0Amount(formatUnits(best.amountIn, 18));
+            console.log("quoteExactOutput out:", result);
+            const amountIn = result.result as bigint;
+            setToken0Amount(formatUnits(amountIn, 18));
+          } catch (err) {
+            console.error("quoteExactOutput error:", err);
+          }
         }
       }
     } catch (err) {
@@ -234,8 +211,6 @@ export default function Swap() {
       alert("Please connect your wallet before swapping.");
       return;
     }
-
-    debugger;
 
     const amount0 = parseUnits(token0Amount || "0", 18);
     const amount1 = parseUnits(token1Amount || "0", 18);

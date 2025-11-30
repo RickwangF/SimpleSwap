@@ -8,7 +8,7 @@ import {
 } from "../utils.ts";
 import { usePoolManager } from "../PoolManagerContext.tsx";
 import { useNavigate } from "react-router-dom";
-import { POOL_MANAGER } from "../const.ts";
+import { formatUnits } from "viem";
 
 export default function PoolManager() {
   const { pools } = usePoolManager();
@@ -84,8 +84,14 @@ export default function PoolManager() {
     // 构建 Table 数据源
     const ds: PoolManagerData[] = pools.map((item) => {
       const converted = convertPoolInfoToManagerData(item);
-      const token0Balance = ballanceCache.get(`${item.pool}-${item.token0}`);
-      const token1Balance = ballanceCache.get(`${item.pool}-${item.token1}`);
+      const token0Balance = formatUnits(
+        ballanceCache.get(`${item.pool}-${item.token0}`) ?? 0n,
+        18
+      );
+      const token1Balance = formatUnits(
+        ballanceCache.get(`${item.pool}-${item.token1}`) ?? 0n,
+        18
+      );
       return {
         ...converted,
         key: item.pool,
