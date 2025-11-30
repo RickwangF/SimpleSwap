@@ -1,19 +1,12 @@
 import { useEffect, useState } from "react";
 import { Button, Input, Select } from "antd";
 import { usePoolManager } from "../PoolManagerContext";
-import type { PoolInfo } from "../type.ts";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { readContract } from "@wagmi/core";
 import erc20ABI from "../ERC20ABI.json";
 import { config } from "../Providers";
 import SwapABI from "../SwapABI.json";
-import {
-  SWAP_ROUTER_ADDRESS,
-  MIN_TICK,
-  MAX_TICK,
-  MIN_SQRT_RATIO,
-  MAX_SQRT_RATIO,
-} from "../const";
+import { SWAP_ROUTER_ADDRESS, MIN_SQRT_RATIO, MAX_SQRT_RATIO } from "../const";
 import { parseUnits, formatUnits } from "viem";
 import replaceIcon from "../assets/replace.png";
 
@@ -32,7 +25,6 @@ export default function Swap() {
   >([]);
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const [isExactInput, setIsExactInput] = useState<boolean>(true);
-  const [bestPool, setBestPool] = useState<PoolInfo | null>(null);
   const publicClient = usePublicClient();
 
   const handleToken0ChangeAmount = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,7 +171,6 @@ export default function Swap() {
       const matchedPools = findMatchedPools();
 
       if (matchedPools.length === 0) {
-        setBestPool(null);
         return;
       }
 
@@ -270,7 +261,6 @@ export default function Swap() {
     const amount1 = parseUnits(token1Amount || "0", 18);
 
     const token0Addr = token0Address as `0x${string}`;
-    const token1Addr = token1Address as `0x${string}`;
 
     const now = Math.floor(Date.now() / 1000);
     const deadline = BigInt(now + 3600); // 1 hour from now
