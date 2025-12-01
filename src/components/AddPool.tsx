@@ -50,10 +50,11 @@ export default function AddPool() {
     const createPoolParams: createPoolParams = {
       token0: token0 as `0x${string}`,
       token1: token1 as `0x${string}`,
-      tickLower: 0,
-      tickUpper: 0,
+      tickLower: -60000,
+      tickUpper: 60000,
       fee: feeTier,
-      sqrtPriceX96: BigInt(0),
+      sqrtPriceX96: 0n,
+      //BigInt("79228162514264337593543950336"),
     };
 
     try {
@@ -109,7 +110,7 @@ export default function AddPool() {
           <div className="form-submit">
             <Button
               type="primary"
-              style={{ height: "40px" }}
+              style={{ height: "50px" }}
               onClick={handleCreatePool}
             >
               Create Pool
