@@ -174,6 +174,30 @@
   align-items: stretch;
 }
 
+.form-group-horizontal {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  padding: 0 20px 20px;
+}
+
+.form-group-horizontal .price-range-item {
+  flex: 1;
+  flex-flow: column nowrap;
+  display: flex;
+  gap: 5px;
+}
+
+.add-pool-current-price {
+  font-size: 20px;
+  color: #333333;
+  padding: 0 20px 20px;
+}
+
+.add-pool-price-slider {
+  padding: 0 20px 20px;
+}
+
 .add-position-form {
   display: flex;
   flex-direction: column;

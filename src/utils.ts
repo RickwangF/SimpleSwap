@@ -121,3 +121,32 @@ export async function getBalance(
     return 0n; // fallback
   }
 }
+
+export function getTickSpacing(feeTier: number): number {
+  if (feeTier === 100) return 1; // 0.01%
+  if (feeTier === 500) return 10; // 0.05%
+  if (feeTier === 3000) return 60; // 0.3%
+  if (feeTier === 10000) return 200; // 1%
+  return 1;
+}
+
+// ---- Uniswap V3 math functions ----
+
+// 计算 tick (price = token1/token0)
+export function priceToTick(price: number): number {
+  return Math.floor(Math.log(price) / Math.log(1.0001));
+}
+
+// 校准 tick 到 spacing 的倍数
+export function nearestUsableTick(tick: number, tickSpacing: number): number {
+  const rounded = Math.round(tick / tickSpacing) * tickSpacing;
+  return rounded;
+}
+
+// sqrt(price) * 2^96 转化
+export function priceToSqrtPriceX96(price: number): bigint {
+  const sqrtPrice = Math.sqrt(price);
+  const Q96 = 2n ** 96n;
+  const sqrtPriceX96 = BigInt(Math.floor(sqrtPrice * Number(Q96)));
+  return sqrtPriceX96;
+}
